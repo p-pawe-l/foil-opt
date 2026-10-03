@@ -1,0 +1,12 @@
+[project]
+name = "foil-opt"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "cma>=4.5.0",
+    "leap-ec>=0.8.2",
+    "neuralfoil>=0.3.3",
+    "numpy>=2.5.3",
+]
