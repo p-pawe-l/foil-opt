@@ -27,6 +27,17 @@ CMA_OPTIONS = {"popsize": 24, "maxiter": 2000, "seed": 1, "verbose": -9}
 DE_HALF_WIDTH = 1.0  # search box is baseline genome +/- this
 DE_OPTIONS = {"popsize": 2, "maxiter": 2000, "mutation": (0.5, 1.0), "recombination": 0.7, "rng": 1}
 
+# Mutation-only (mu + lambda) evolution strategy
+ES_OPTIONS = {
+    "mu": 6,  # parents kept each generation
+    "lambda": 24,  # children per generation (same budget as CMA-ES)
+    "sigma0": 0.03,  # initial mutation step
+    "sigma_factor": 1.2,  # 1/5 rule: multiply or divide sigma by this
+    "min_sigma": 1e-6,  # stop once steps are this small
+    "maxiter": 2000,
+    "seed": 1,
+}
+
 LOG_EVERY = 10
 
 # Output

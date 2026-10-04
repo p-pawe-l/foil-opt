@@ -5,6 +5,7 @@ import numpy as np
 from scipy.optimize import differential_evolution
 
 from .config import CMA_OPTIONS, DE_HALF_WIDTH, DE_OPTIONS, LOG_EVERY, SIGMA0
+from .mutation_es import optimize_mutation
 from .objective import evaluate
 
 
@@ -45,7 +46,12 @@ def optimize_de(x0: np.ndarray) -> tuple[np.ndarray, float]:
     return result.x, result.fun
 
 
+def optimize_es(x0: np.ndarray) -> tuple[np.ndarray, float]:
+    return optimize_mutation(x0, _log)
+
+
 OPTIMIZERS = {
     "cma": ("CMA-ES", optimize_cma),
     "de": ("Differential Evolution", optimize_de),
+    "es": ("Mutation-only ES", optimize_es),
 }
