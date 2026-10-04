@@ -4,8 +4,10 @@ import numpy as np
 
 from .aero import batch_aero
 from .config import (
+    CAMBER_PENALTY,
     CONFIDENCE_PENALTY,
     CROSSING_PENALTY,
+    MAX_CAMBER,
     MIN_CONFIDENCE,
     MIN_THICKNESS,
     THICKNESS_PENALTY,
@@ -15,10 +17,13 @@ from .geometry import to_airfoil
 
 
 def penalty(x: np.ndarray, conf: np.ndarray) -> float:
-    t = to_airfoil(x).local_thickness(X_CHECK)
+    af = to_airfoil(x)
+    t = af.local_thickness(X_CHECK)
+    c = af.local_camber(X_CHECK)
     p = 0.0
     p += THICKNESS_PENALTY * max(0.0, MIN_THICKNESS - t.max())  # too thin
     p += CROSSING_PENALTY * np.sum(np.maximum(0.0, -t))  # surfaces cross
+    p += CAMBER_PENALTY * max(0.0, c.max() - MAX_CAMBER)  # too much camber
     p += CONFIDENCE_PENALTY * np.sum(np.maximum(0.0, MIN_CONFIDENCE - conf))  # untrusted prediction
     return p
 

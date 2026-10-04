@@ -9,12 +9,14 @@ MODEL_SIZE = "large"
 
 # Constraints
 MIN_THICKNESS = 0.12
+MAX_CAMBER = 0.04  # NACA 2412 has 0.02
 MIN_CONFIDENCE = 0.9
-X_CHECK = np.linspace(0.01, 0.99, 50)  # chord stations where thickness is checked
+X_CHECK = np.linspace(0.01, 0.99, 50)  # chord stations where thickness and camber are checked
 
 # Penalty weights
 THICKNESS_PENALTY = 1e3
 CROSSING_PENALTY = 1e3
+CAMBER_PENALTY = 1e4  # strong: extra camber buys a lot of L/D
 CONFIDENCE_PENALTY = 1e2
 
 # CMA-ES
