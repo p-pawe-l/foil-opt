@@ -1,7 +1,7 @@
 """Minimal airfoil shape optimization: CMA-ES or Differential Evolution + NeuralFoil.
 
 Goal: maximize average L/D over a few angles of attack at Re = 5e5,
-keeping max thickness >= 12% and only trusting confident NeuralFoil predictions.
+keeping max thickness >= 12%, max camber <= 4% and only trusting confident NeuralFoil predictions.
 Starts from a NACA 2412 described by Kulfan (CST) parameters.
 
 Usage: python src/cma_example.py [--optimizer {cma,de}]
@@ -38,7 +38,7 @@ def main():
     best_x, best_cost = optimize(x0)
 
     best = to_airfoil(best_x)
-    print(f"\nOptimized: mean L/D = {-best_cost:.1f}, max thickness = {best.max_thickness():.3f}")
+    print(f"\nOptimized: mean L/D = {-best_cost:.1f}, max thickness = {best.max_thickness():.3f}, max camber = {best.max_camber():.3f}")
 
     airfoils = [("NACA 2412", baseline), ("optimized", best)]
     print_polars(airfoils)
