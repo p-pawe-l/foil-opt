@@ -1,17 +1,18 @@
-"""Minimal airfoil shape optimization: CMA-ES or Differential Evolution + NeuralFoil.
+"""Minimal airfoil shape optimization: CMA-ES, Differential Evolution or a mutation-only ES + NeuralFoil.
 
 Goal: maximize average L/D over a few angles of attack at Re = 5e5,
 keeping max thickness >= 12%, max camber <= 4% and only trusting confident NeuralFoil predictions.
 Starts from a NACA 2412 described by Kulfan (CST) parameters.
 
-Usage: python src/cma_example.py [--optimizer {cma,de}]
+Usage: python src/cma_example.py [--optimizer {cma,de,es}]
 
 Modules (src/foil_opt/):
   config     problem settings
   geometry   genome <-> Kulfan airfoil
   aero       batched NeuralFoil call
   objective  cost = -mean L/D + penalties
-  optimizer  CMA-ES and Differential Evolution
+  optimizer  CMA-ES, Differential Evolution and the optimizer registry
+  mutation_es  hand-written mutation-only (mu + lambda) ES
   report     printed polars and shape plot
 """
 
@@ -22,7 +23,7 @@ from foil_opt.objective import evaluate
 from foil_opt.optimizer import OPTIMIZERS
 from foil_opt.report import plot_shapes, print_polars
 
-PLOT_PATHS = {"cma": "optimized_airfoil.png", "de": "optimized_airfoil_de.png"}
+PLOT_PATHS = {"cma": "optimized_airfoil.png", "de": "optimized_airfoil_de.png", "es": "optimized_airfoil_es.png"}
 
 
 def main():
