@@ -20,8 +20,12 @@ CONFIDENCE_PENALTY = 1e2
 # CMA-ES
 SIGMA0 = 0.03
 CMA_OPTIONS = {"popsize": 24, "maxiter": 2000, "seed": 1, "verbose": -9}
+
+# Differential Evolution
+DE_HALF_WIDTH = 1.0  # search box is baseline genome +/- this
+DE_OPTIONS = {"popsize": 2, "maxiter": 2000, "mutation": (0.5, 1.0), "recombination": 0.7, "rng": 1}
+
 LOG_EVERY = 10
 
 # Output
 BASELINE_NAME = "naca2412"
-PLOT_PATH = "optimized_airfoil.png"
