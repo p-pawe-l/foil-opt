@@ -9,7 +9,7 @@ Airfoil shape optimization with CMA-ES and the [NeuralFoil](https://github.com/p
 - **Shape:** 8 upper and 8 lower Kulfan (CST) weights, plus a leading-edge weight (17 parameters), starting from a NACA 2412
 - **Objective:** maximize mean L/D at α = 2°, 4°, 6° and Re = 5·10⁵
 - **Constraints (penalties):** max thickness ≥ 12%, surfaces must not cross, NeuralFoil confidence ≥ 0.9
-- **Optimizer:** CMA-ES (`cma`), with each generation scored in one batched NeuralFoil call
+- **Optimizer:** CMA-ES (`cma`) or Differential Evolution (`scipy`), with each generation scored in one batched NeuralFoil call
 
 ## Result
 
@@ -24,7 +24,8 @@ Airfoil shape optimization with CMA-ES and the [NeuralFoil](https://github.com/p
 
 ```bash
 uv sync
-uv run python src/cma_example.py
+uv run python src/cma_example.py                    # CMA-ES
+uv run python src/cma_example.py --optimizer de     # Differential Evolution
 ```
 
-The run takes a few seconds and writes `optimized_airfoil.png`.
+The run takes a few seconds and writes `optimized_airfoil.png` (CMA-ES) or `optimized_airfoil_de.png` (DE).
