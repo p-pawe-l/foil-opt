@@ -1,48 +1,188 @@
-"""Problem settings, constraint limits and optimizer options."""
+"""Settings from YAML: the package's default.yaml, optionally overridden by a user file.
 
+Modules read `config.settings` when they run, so `config.use(path)` takes effect everywhere.
+"""
+
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 import numpy as np
+import yaml
 
-# Design conditions: minimize mean CD over every (CL, Re) pair
-TARGET_CLS = np.array([0.5, 0.8])
-REYNOLDS = np.array([3e5, 1e6])
-MODEL_SIZE = "large"
+DEFAULT_FILE = Path(__file__).with_name("default.yaml")
 
-# Angle-of-attack solve for each target CL (secant iterations)
-ALPHA_SECANT_STEPS = 3
-CL_TOLERANCE = 0.01
 
-# Stall check: CL max over this alpha sweep at the lowest Reynolds number
-STALL_ALPHAS = np.array([10.0, 12.0, 14.0, 16.0])
+@dataclass
+class Problem:
+    baseline: str
+    target_cls: np.ndarray
+    reynolds: np.ndarray
+    model_size: str
+    alpha_secant_steps: int
+    stall_alphas: np.ndarray
+    x_check: np.ndarray
+    x_aft: float
 
-# Constraint limits
-MIN_THICKNESS = 0.12
-MIN_AFT_THICKNESS = 0.015  # at X_AFT
-MAX_CAMBER = 0.04
-MIN_LE_RADIUS = 0.007
-MIN_TE_ANGLE = 8.0  # degrees
-MIN_CM = -0.1
-MIN_CONFIDENCE = 0.9
-MIN_CL_MAX = 1.2
+    def __post_init__(self):
+        self.target_cls = np.asarray(self.target_cls, dtype=float)
+        self.reynolds = np.asarray(self.reynolds, dtype=float)
+        self.stall_alphas = np.asarray(self.stall_alphas, dtype=float)
+        self.x_check = np.linspace(float(self.x_check["start"]), float(self.x_check["stop"]), int(self.x_check["num"]))
 
-X_CHECK = np.linspace(0.01, 0.99, 50)
-X_AFT = 0.9
 
-# Optimizers
-BASELINE_NAME = "naca2412"
-CMA = {"sigma0": 0.03, "popsize": 24}
-DE = {"half_width": 1.0, "popsize": 2, "mutation": (0.5, 1.0), "recombination": 0.7}
-ES = {"mu": 6, "lambda": 24, "sigma0": 0.03, "sigma_factor": 1.2, "min_sigma": 1e-6}
-SA_ES = {"mu": 6, "lambda": 24, "sigma0": 0.03, "stall_generations": 60}
-GRADIENT = {"max_iter": 500, "margin": 0.01}  # margin: fraction of each limit kept as safety
-NSGA2 = {"pop_size": 60, "generations": 200, "sigma0": 0.02, "init_spread": 0.03}
+@dataclass
+class Limits:
+    lower: float | None = None
+    upper: float | None = None
+    scale: float | None = None
 
-# Experiments
-DEFAULT_BUDGET = 10_000
-DEFAULT_SEEDS = 5
-LOG_EVERY = 1000  # evaluations
+    def __post_init__(self):
+        if self.lower is None and self.upper is None:
+            raise ValueError("a constraint needs `lower` and/or `upper`")
+        if self.scale is None:
+            self.scale = abs(self.lower if self.lower is not None else self.upper) or 1.0
 
-ROOT = Path(__file__).resolve().parents[2]
-ASSETS_DIR = ROOT / "assets"
-RESULTS_DIR = ROOT / "results"
+
+@dataclass
+class CMA:
+    sigma0: float
+    popsize: int
+
+
+@dataclass
+class DE:
+    half_width: float
+    popsize: int
+    mutation: tuple[float, float]
+    recombination: float
+
+
+@dataclass
+class ES:
+    parents: int
+    children: int
+    sigma0: float
+    sigma_factor: float
+    min_sigma: float
+
+
+@dataclass
+class SelfAdaptiveES:
+    parents: int
+    children: int
+    sigma0: float
+    stall_generations: int
+
+
+@dataclass
+class Gradient:
+    max_iter: int
+    margin: float
+
+
+@dataclass
+class NSGA2:
+    pop_size: int
+    generations: int
+    sigma0: float
+    init_spread: float
+
+
+@dataclass
+class Optimizers:
+    cma: CMA
+    de: DE
+    es: ES
+    sa_es: SelfAdaptiveES
+    gradient: Gradient
+    nsga2: NSGA2
+
+
+@dataclass
+class Experiments:
+    budget: int
+    seeds: int
+    log_every: int
+
+
+@dataclass
+class Paths:
+    assets: Path
+    results: Path
+
+
+@dataclass
+class Settings:
+    problem: Problem
+    constraints: dict[str, Limits]
+    optimizers: Optimizers
+    experiments: Experiments
+    paths: Paths
+    source: dict  # the merged YAML, saved with every run
+
+
+def load(path: str | Path | None = None) -> Settings:
+    data = read(DEFAULT_FILE)
+    if path is not None:
+        data = merge(data, read(Path(path)))
+    try:
+        return Settings(
+            problem=build(Problem, data["problem"], "problem"),
+            constraints={
+                name: build(Limits, limits, f"constraints.{name}")
+                for name, limits in data["constraints"].items()
+                if limits is not None
+            },
+            optimizers=Optimizers(**{
+                f.name: build(f.type, data["optimizers"][f.name], f"optimizers.{f.name}") for f in fields(Optimizers)
+            }),
+            experiments=build(Experiments, data["experiments"], "experiments"),
+            paths=Paths(**{key: Path(value) for key, value in data["paths"].items()}),
+            source=data,
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"invalid settings{f' in {path}' if path else ''}: {error}") from None
+
+
+def build(cls, values: dict, where: str):
+    names = {f.name for f in fields(cls)}
+    unknown = set(values) - names
+    if unknown:
+        raise ValueError(f"unknown key(s) {sorted(unknown)} in {where}, expected {sorted(names)}")
+    return cls(**{f.name: cast(f.type, values[f.name]) for f in fields(cls) if f.name in values})
+
+
+def cast(type_, value):
+    """Convert to the field's type; YAML reads numbers such as 3e5 as strings."""
+    if value is None:
+        return None
+    if type_ in (float, float | None):
+        return float(value)
+    if type_ is int:
+        return int(float(value))
+    if getattr(type_, "__origin__", None) is tuple:
+        return tuple(float(v) for v in value)
+    return value
+
+
+def read(path: Path) -> dict:
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
+
+
+def merge(base: dict, override: dict) -> dict:
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            merged[key] = merge(base[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+settings = load()
+
+
+def use(path: str | Path | None) -> None:
+    global settings
+    settings = load(path)

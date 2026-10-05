@@ -46,11 +46,11 @@ def plot_airfoil(ax, af: asb.Airfoil, color: str, label: str, **kwargs) -> None:
     ax.plot(xy[:, 0], xy[:, 1], color=color, label=label, **kwargs)
 
 
-def plot_shapes(designs: dict[str, asb.Airfoil], baseline: asb.Airfoil, path: Path) -> None:
+def plot_shapes(designs: dict[str, asb.Airfoil], baseline: asb.Airfoil, baseline_label: str, path: Path) -> None:
     """One panel per design, each over the baseline, so near-identical shapes stay readable."""
     fig, axes = plt.subplots(len(designs), 1, figsize=(8, 1.9 * len(designs)), sharex=True, squeeze=False)
     for i, (ax, (name, af)) in enumerate(zip(axes[:, 0], designs.items())):
-        plot_airfoil(ax, baseline, BASELINE, "NACA 2412", linewidth=1.2, linestyle="--")
+        plot_airfoil(ax, baseline, BASELINE, baseline_label, linewidth=1.2, linestyle="--")
         plot_airfoil(ax, af, SERIES[0], name)
         ax.set_aspect("equal")
         ax.set_ylim(-0.08, 0.13)
@@ -87,7 +87,7 @@ def best_at(history: np.ndarray, grid: np.ndarray) -> np.ndarray:
 
 
 def plot_pareto(mean_cd, max_abs_cm, designs: dict[str, asb.Airfoil], marked: dict[str, tuple[float, float]],
-                baseline: asb.Airfoil, path: Path) -> None:
+                baseline: asb.Airfoil, baseline_label: str, path: Path) -> None:
     fig, (ax, ax_shapes) = plt.subplots(2, 1, figsize=(8, 8), gridspec_kw={"height_ratios": [1.3, 1]})
     ax.plot(max_abs_cm, mean_cd, "o", color=SERIES[0], markersize=5, label="NSGA-II front")
     marker_colors = [BASELINE, SERIES[6]]
@@ -98,7 +98,7 @@ def plot_pareto(mean_cd, max_abs_cm, designs: dict[str, asb.Airfoil], marked: di
     ax.set_title("Drag vs pitching moment", loc="left")
     ax.legend()
 
-    plot_airfoil(ax_shapes, baseline, BASELINE, "NACA 2412", linewidth=1.2, linestyle="--")
+    plot_airfoil(ax_shapes, baseline, BASELINE, baseline_label, linewidth=1.2, linestyle="--")
     for color, (name, af) in zip(SERIES[1:], designs.items()):
         plot_airfoil(ax_shapes, af, color, name)
     ax_shapes.set_aspect("equal")

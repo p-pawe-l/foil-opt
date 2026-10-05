@@ -10,7 +10,7 @@ from pathlib import Path
 import aerosandbox as asb
 import numpy as np
 
-from .problem import CL_GRID, RE_GRID, evaluate
+from .problem import evaluate, operating_points
 
 
 @dataclass
@@ -63,10 +63,11 @@ def parse_polar(path: Path) -> list[tuple[float, ...]]:
 
 
 def validate(x: np.ndarray, af: asb.KulfanAirfoil, xfoil: str) -> Comparison:
+    cl, re = operating_points()
     nf = evaluate([x]).aero
-    xf = {key: np.full(len(CL_GRID), np.nan) for key in ("CD", "CM")}
-    for re in np.unique(RE_GRID):
-        at_re = RE_GRID == re
-        result = run_xfoil(af.to_airfoil(), re, CL_GRID[at_re], xfoil)
+    xf = {key: np.full(len(cl), np.nan) for key in ("CD", "CM")}
+    for reynolds in np.unique(re):
+        at_re = re == reynolds
+        result = run_xfoil(af.to_airfoil(), reynolds, cl[at_re], xfoil)
         xf["CD"][at_re], xf["CM"][at_re] = result["CD"], result["CM"]
-    return Comparison(CL_GRID, RE_GRID, nf["CD"][0], xf["CD"], nf["CM"][0], xf["CM"])
+    return Comparison(cl, re, nf["CD"][0], xf["CD"], nf["CM"][0], xf["CM"])

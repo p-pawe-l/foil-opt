@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 
-from .config import RESULTS_DIR
+from . import config
 from .evaluator import Evaluator
 from .geometry import baseline_genome
 from .optimizers import OPTIMIZERS
@@ -22,6 +22,7 @@ class RunResult:
     genome: list[float]
     cost: float
     history: list[tuple[int, float]]
+    settings: dict | None = None  # the merged YAML settings of the run
 
     @property
     def x(self) -> np.ndarray:
@@ -45,17 +46,20 @@ def run(key: str, seed: int, budget: int, verbose: bool = False) -> RunResult:
         genome=evaluator.best_x.tolist(),
         cost=evaluator.best_cost,
         history=evaluator.history,
+        settings=config.settings.source,
     )
 
 
 def save(result: RunResult) -> None:
-    RESULTS_DIR.mkdir(exist_ok=True)
-    path = RESULTS_DIR / f"{result.optimizer}_seed{result.seed}.json"
+    results = config.settings.paths.results
+    results.mkdir(parents=True, exist_ok=True)
+    path = results / f"{result.optimizer}_seed{result.seed}.json"
     path.write_text(json.dumps(asdict(result)))
 
 
 def load(key: str) -> list[RunResult]:
-    return [RunResult(**json.loads(p.read_text())) for p in sorted(RESULTS_DIR.glob(f"{key}_seed*.json"))]
+    paths = sorted(config.settings.paths.results.glob(f"{key}_seed*.json"))
+    return [RunResult(**json.loads(p.read_text())) for p in paths]
 
 
 def best(results: list[RunResult]) -> RunResult:

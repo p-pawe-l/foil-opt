@@ -13,11 +13,9 @@ from leap_ec.multiobjective.problems import MultiObjectiveProblem
 from leap_ec.real_rep.ops import mutate_gaussian
 from leap_ec.representation import Representation
 
-from .config import NSGA2
-from .constraints import without
+from . import config
+from .constraints import build_constraints
 from .problem import INFEASIBLE_OFFSET, evaluate
-
-CONSTRAINTS = without("CM")
 
 
 class AirfoilProblem(MultiObjectiveProblem):
@@ -35,7 +33,7 @@ class AirfoilProblem(MultiObjectiveProblem):
 
 def objectives(pop: np.ndarray) -> np.ndarray:
     """(mean CD, max |CM|) per candidate; infeasible candidates get both set from their violation."""
-    e = evaluate(pop, CONSTRAINTS)
+    e = evaluate(pop, build_constraints(exclude=("cm",)))
     f = np.column_stack([e.objective, np.abs(e.aero["CM"]).max(axis=1)])
     f[~e.feasible] = INFEASIBLE_OFFSET + e.violation[~e.feasible, None]
     return f
@@ -52,18 +50,19 @@ def run_nsga2(x0: np.ndarray, seed: int) -> Front:
     random.seed(seed)
     np.random.seed(seed)
     rng = np.random.default_rng(seed)
-    pop_size = NSGA2["pop_size"]
+    s = config.settings.optimizers.nsga2
+    pop_size = s.pop_size
 
     final = generalized_nsga_2(
-        max_generations=NSGA2["generations"],
+        max_generations=s.generations,
         pop_size=pop_size,
         problem=AirfoilProblem(),
-        representation=Representation(initialize=lambda: x0 + NSGA2["init_spread"] * rng.standard_normal(len(x0))),
+        representation=Representation(initialize=lambda: x0 + s.init_spread * rng.standard_normal(len(x0))),
         pipeline=[
             ops.tournament_selection,
             ops.clone,
             ops.UniformCrossover(p_swap=0.2),
-            mutate_gaussian(std=NSGA2["sigma0"], expected_num_mutations="isotropic"),
+            mutate_gaussian(std=s.sigma0, expected_num_mutations="isotropic"),
             ops.pool(size=pop_size),
             ops.grouped_evaluate,
         ],

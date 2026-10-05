@@ -1,7 +1,8 @@
 """Design constraints, written with aerosandbox.numpy so they work numerically and symbolically.
 
-Each value function takes one airfoil and its aero dict and may return a scalar or a vector;
-numerically the worst element counts, in the gradient optimizer every element is constrained.
+The value functions are defined here; which constraints apply and their limits come from the settings.
+A value may be a scalar or a vector: numerically the worst element counts, in the gradient
+optimizer every element is constrained.
 """
 
 from collections.abc import Callable
@@ -10,7 +11,7 @@ from dataclasses import dataclass
 import aerosandbox as asb
 import aerosandbox.numpy as np
 
-from . import config as c
+from . import config
 
 
 @dataclass(frozen=True)
@@ -41,21 +42,31 @@ def le_radius(af: asb.KulfanAirfoil):
     return af.LE_radius()
 
 
-CONSTRAINTS = [
-    Constraint("max thickness", lambda af, a: np.max(af.local_thickness(c.X_CHECK)),
-               lower=c.MIN_THICKNESS, scale=c.MIN_THICKNESS),
-    Constraint("no crossing", lambda af, a: af.local_thickness(c.X_CHECK), lower=0.0, scale=c.MIN_THICKNESS),
-    Constraint("aft thickness", lambda af, a: af.local_thickness(c.X_AFT),
-               lower=c.MIN_AFT_THICKNESS, scale=c.MIN_AFT_THICKNESS),
-    Constraint("max camber", lambda af, a: af.local_camber(c.X_CHECK), upper=c.MAX_CAMBER, scale=c.MAX_CAMBER),
-    Constraint("LE radius", lambda af, a: le_radius(af), lower=c.MIN_LE_RADIUS, scale=c.MIN_LE_RADIUS),
-    Constraint("TE angle", lambda af, a: af.TE_angle(), lower=c.MIN_TE_ANGLE, scale=c.MIN_TE_ANGLE),
-    Constraint("CM", lambda af, a: a["CM"], lower=c.MIN_CM, scale=abs(c.MIN_CM)),
-    Constraint("confidence", lambda af, a: a["analysis_confidence"], lower=c.MIN_CONFIDENCE),
-    Constraint("CL max", lambda af, a: np.max(a["CL_stall"]), lower=c.MIN_CL_MAX, scale=c.MIN_CL_MAX),
-    Constraint("CL error", lambda af, a: np.abs(a["CL"] - a["CL_target"]), upper=c.CL_TOLERANCE, scale=c.CL_TOLERANCE),
-]
+def _x_check():
+    return config.settings.problem.x_check
 
 
-def without(*names: str) -> list[Constraint]:
-    return [con for con in CONSTRAINTS if con.name not in names]
+VALUES: dict[str, Callable[[asb.KulfanAirfoil, dict], object]] = {
+    "max_thickness": lambda af, a: np.max(af.local_thickness(_x_check())),
+    "no_crossing": lambda af, a: af.local_thickness(_x_check()),
+    "aft_thickness": lambda af, a: af.local_thickness(config.settings.problem.x_aft),
+    "max_camber": lambda af, a: af.local_camber(_x_check()),
+    "le_radius": lambda af, a: le_radius(af),
+    "te_angle": lambda af, a: af.TE_angle(),
+    "cm": lambda af, a: a["CM"],
+    "confidence": lambda af, a: a["analysis_confidence"],
+    "cl_max": lambda af, a: np.max(a["CL_stall"]),
+    "cl_error": lambda af, a: np.abs(a["CL"] - a["CL_target"]),
+}
+
+
+def build_constraints(exclude: tuple[str, ...] = ()) -> list[Constraint]:
+    """The constraints enabled in the settings, minus `exclude`."""
+    unknown = set(config.settings.constraints) - set(VALUES)
+    if unknown:
+        raise ValueError(f"unknown constraint(s) {sorted(unknown)}, available: {sorted(VALUES)}")
+    return [
+        Constraint(name, VALUES[name], limits.lower, limits.upper, limits.scale)
+        for name, limits in config.settings.constraints.items()
+        if name not in exclude
+    ]

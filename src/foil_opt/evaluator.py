@@ -5,7 +5,7 @@ Counts evaluations, records the best feasible design and its convergence history
 
 import numpy as np
 
-from .config import LOG_EVERY
+from . import config
 from .problem import evaluate
 
 
@@ -17,7 +17,7 @@ class Evaluator:
         self.best_x: np.ndarray | None = None
         self.best_cost = np.inf
         self.history: list[tuple[int, float]] = []  # (evaluations, best cost so far)
-        self._next_log = LOG_EVERY
+        self._next_log = config.settings.experiments.log_every
 
     @property
     def exhausted(self) -> bool:
@@ -35,7 +35,7 @@ class Evaluator:
 
         if self.verbose and self.evals >= self._next_log:
             print(f"evals {self.evals:6d}  best {describe(self.best_cost)}")
-            self._next_log += LOG_EVERY
+            self._next_log += config.settings.experiments.log_every
         return cost
 
 

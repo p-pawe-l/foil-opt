@@ -1,0 +1,43 @@
+# Default settings. Pass your own file with `foil-opt --config my.yaml ...`:
+# it only needs the values you want to change, the rest comes from here.
+
+problem:
+  baseline: naca2412          # starting airfoil, any name aerosandbox knows
+  target_cls: [0.5, 0.8]      # minimize mean CD over every (CL, Re) pair
+  reynolds: [300000, 1000000]
+  model_size: large           # NeuralFoil model
+  alpha_secant_steps: 3       # secant steps when solving for the alpha of each target CL
+  stall_alphas: [10, 12, 14, 16]  # CL max is checked over these, at the lowest Reynolds number
+  x_check: {start: 0.01, stop: 0.99, num: 50}  # chord stations for thickness and camber
+  x_aft: 0.9                  # chord station for the aft-thickness constraint
+
+# Each constraint takes `lower` and/or `upper`, and optionally `scale` (used to normalize
+# the violation; defaults to the limit's magnitude). Set a constraint to null to disable it.
+constraints:
+  max_thickness: {lower: 0.12}
+  no_crossing:   {lower: 0.0, scale: 0.12}
+  aft_thickness: {lower: 0.015}
+  max_camber:    {upper: 0.04}
+  le_radius:     {lower: 0.007}
+  te_angle:      {lower: 8.0}       # degrees
+  cm:            {lower: -0.1}
+  confidence:    {lower: 0.9, scale: 1.0}
+  cl_max:        {lower: 1.2}
+  cl_error:      {upper: 0.01}      # |CL - target| after the alpha solve
+
+optimizers:
+  cma: {sigma0: 0.03, popsize: 24}
+  de: {half_width: 1.0, popsize: 2, mutation: [0.5, 1.0], recombination: 0.7}
+  es: {parents: 6, children: 24, sigma0: 0.03, sigma_factor: 1.2, min_sigma: 1.0e-6}
+  sa_es: {parents: 6, children: 24, sigma0: 0.03, stall_generations: 60}
+  gradient: {max_iter: 500, margin: 0.01}   # margin: fraction of each limit kept as safety
+  nsga2: {pop_size: 60, generations: 200, sigma0: 0.02, init_spread: 0.03}
+
+experiments:
+  budget: 10000      # evaluations per run
+  seeds: 5
+  log_every: 1000    # evaluations between progress lines
+
+paths:
+  assets: assets
+  results: results
