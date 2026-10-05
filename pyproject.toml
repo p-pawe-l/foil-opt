@@ -1,12 +1,30 @@
 [project]
 name = "foil-opt"
 version = "0.1.0"
-description = "Add your description here"
+description = "Airfoil shape optimization with evolutionary and gradient-based methods on the NeuralFoil surrogate"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "aerosandbox>=4.2.10",
     "cma>=4.5.0",
     "leap-ec>=0.8.2",
+    "matplotlib>=3.11.2",
     "neuralfoil>=0.3.3",
     "numpy>=2.5.3",
+    "scipy>=1.18.1",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[project.scripts]
+foil-opt = "foil_opt.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
