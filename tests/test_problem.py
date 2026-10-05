@@ -3,7 +3,7 @@ import pytest
 
 from foil_opt.constraints import Constraint, le_radius
 from foil_opt.geometry import baseline_genome, to_airfoil
-from foil_opt.problem import CL_GRID, INFEASIBLE_OFFSET, evaluate
+from foil_opt.problem import INFEASIBLE_OFFSET, evaluate, operating_points
 
 
 @pytest.fixture(scope="module")
@@ -19,7 +19,7 @@ def test_baseline_is_feasible(x0):
 
 def test_alpha_solve_hits_target_cl(x0):
     e = evaluate([x0])
-    np.testing.assert_allclose(e.aero["CL"][0], CL_GRID, atol=0.01)
+    np.testing.assert_allclose(e.aero["CL"][0], operating_points()[0], atol=0.01)
 
 
 def test_batch_matches_single_evaluation(x0):
