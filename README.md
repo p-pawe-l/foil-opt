@@ -25,7 +25,7 @@ Airfoil shape optimization on the [NeuralFoil](https://github.com/peterdsharpe/N
 
 - **Constraint handling:** feasibility rule. A feasible design is ranked by mean CD, an infeasible one by its total normalized violation, and every feasible design beats every infeasible one, so there are no penalty weights to tune.
 
-All settings are in [`config.py`](src/foil_opt/config.py).
+All settings are in [`default.yaml`](src/foil_opt/default.yaml); see [Settings](#settings) to change them.
 
 ## Optimizers
 
@@ -78,6 +78,30 @@ Evaluations and time are medians over seeds.
 
 The optimized designs are not artifacts of the surrogate model.
 
+## Settings
+
+Every number above (operating points, constraint limits, optimizer options, budget, output folders) comes from [`src/foil_opt/default.yaml`](src/foil_opt/default.yaml). To change them, write a YAML file with only the values you want different and pass it with `--config`:
+
+```yaml
+problem:
+  target_cls: [0.3, 0.6, 0.9]
+  reynolds: [2e5, 5e5]
+constraints:
+  max_thickness: {lower: 0.10}
+  cm: null                # null disables a constraint
+optimizers:
+  cma: {popsize: 32}
+```
+
+```bash
+uv run foil-opt --config configs/example.yaml run cma
+```
+
+- Your file is merged over the defaults, so anything you leave out keeps its default value.
+- Each constraint takes `lower` and/or `upper`, plus an optional `scale` that normalizes its violation (it defaults to the limit's magnitude). The available constraints are the ones listed in `default.yaml`.
+- An unknown key or constraint name stops the run with an error naming the valid options, so a typo can't be silently ignored.
+- Every run's JSON in `results/` stores the settings it used.
+
 ## Usage
 
 ```bash
@@ -86,6 +110,7 @@ uv run foil-opt run cma                # one optimizer: cma, de, es, sa-es, grad
 uv run foil-opt compare                # all optimizers, 5 seeds, 10k evaluations (--optimizers, --seeds, --budget)
 uv run foil-opt pareto                 # NSGA-II drag vs |CM| front
 uv run foil-opt validate               # best saved designs vs XFoil
+uv run foil-opt --config my.yaml ...   # any command with your settings
 uv run pytest
 ```
 
@@ -99,7 +124,8 @@ Runs are saved as JSON in `results/`, and figures as PNGs in `assets/`. `foil-op
 
 ```
 src/foil_opt/
-  config.py          settings, limits, optimizer options, paths
+  default.yaml       default settings: problem, constraint limits, optimizer options, paths
+  config.py          loads and validates the YAML settings
   geometry.py        genome <-> Kulfan airfoil
   aero.py            batched NeuralFoil calls, α solve for target CL
   constraints.py     constraint definitions (numeric and symbolic)
@@ -112,5 +138,6 @@ src/foil_opt/
   report.py          text tables
   plotting.py        figures
   cli.py             foil-opt command
-tests/               geometry, problem, optimizers
+configs/             example settings override
+tests/               config, geometry, problem, optimizers
 ```
