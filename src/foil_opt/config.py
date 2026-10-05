@@ -1,44 +1,48 @@
-"""Problem settings: flow conditions, constraints and optimizer options."""
+"""Problem settings, constraint limits and optimizer options."""
+
+from pathlib import Path
 
 import numpy as np
 
-# Flow conditions
-RE = 5e5
-ALPHAS = np.array([2.0, 4.0, 6.0])
+# Design conditions: minimize mean CD over every (CL, Re) pair
+TARGET_CLS = np.array([0.5, 0.8])
+REYNOLDS = np.array([3e5, 1e6])
 MODEL_SIZE = "large"
 
-# Constraints
+# Angle-of-attack solve for each target CL (secant iterations)
+ALPHA_SECANT_STEPS = 3
+CL_TOLERANCE = 0.01
+
+# Stall check: CL max over this alpha sweep at the lowest Reynolds number
+STALL_ALPHAS = np.array([10.0, 12.0, 14.0, 16.0])
+
+# Constraint limits
 MIN_THICKNESS = 0.12
-MAX_CAMBER = 0.04  # NACA 2412 has 0.02
+MIN_AFT_THICKNESS = 0.015  # at X_AFT
+MAX_CAMBER = 0.04
+MIN_LE_RADIUS = 0.007
+MIN_TE_ANGLE = 8.0  # degrees
+MIN_CM = -0.1
 MIN_CONFIDENCE = 0.9
-X_CHECK = np.linspace(0.01, 0.99, 50)  # chord stations where thickness and camber are checked
+MIN_CL_MAX = 1.2
 
-# Penalty weights
-THICKNESS_PENALTY = 1e3
-CROSSING_PENALTY = 1e3
-CAMBER_PENALTY = 1e4  # strong: extra camber buys a lot of L/D
-CONFIDENCE_PENALTY = 1e2
+X_CHECK = np.linspace(0.01, 0.99, 50)
+X_AFT = 0.9
 
-# CMA-ES
-SIGMA0 = 0.03
-CMA_OPTIONS = {"popsize": 24, "maxiter": 2000, "seed": 1, "verbose": -9}
-
-# Differential Evolution
-DE_HALF_WIDTH = 1.0  # search box is baseline genome +/- this
-DE_OPTIONS = {"popsize": 2, "maxiter": 2000, "mutation": (0.5, 1.0), "recombination": 0.7, "rng": 1}
-
-# Mutation-only (mu + lambda) evolution strategy
-ES_OPTIONS = {
-    "mu": 6,  # parents kept each generation
-    "lambda": 24,  # children per generation (same budget as CMA-ES)
-    "sigma0": 0.03,  # initial mutation step
-    "sigma_factor": 1.2,  # 1/5 rule: multiply or divide sigma by this
-    "min_sigma": 1e-6,  # stop once steps are this small
-    "maxiter": 2000,
-    "seed": 1,
-}
-
-LOG_EVERY = 10
-
-# Output
+# Optimizers
 BASELINE_NAME = "naca2412"
+CMA = {"sigma0": 0.03, "popsize": 24}
+DE = {"half_width": 1.0, "popsize": 2, "mutation": (0.5, 1.0), "recombination": 0.7}
+ES = {"mu": 6, "lambda": 24, "sigma0": 0.03, "sigma_factor": 1.2, "min_sigma": 1e-6}
+SA_ES = {"mu": 6, "lambda": 24, "sigma0": 0.03, "stall_generations": 60}
+GRADIENT = {"max_iter": 500, "margin": 0.01}  # margin: fraction of each limit kept as safety
+NSGA2 = {"pop_size": 60, "generations": 200, "sigma0": 0.02, "init_spread": 0.03}
+
+# Experiments
+DEFAULT_BUDGET = 10_000
+DEFAULT_SEEDS = 5
+LOG_EVERY = 1000  # evaluations
+
+ROOT = Path(__file__).resolve().parents[2]
+ASSETS_DIR = ROOT / "assets"
+RESULTS_DIR = ROOT / "results"
