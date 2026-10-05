@@ -1,0 +1,17 @@
+# Example override: only the values that differ from src/foil_opt/default.yaml.
+# Run with: uv run foil-opt --config configs/example.yaml run cma
+
+problem:
+  target_cls: [0.3, 0.6, 0.9]
+  reynolds: [2e5, 5e5]
+
+constraints:
+  max_thickness: {lower: 0.10}
+  cm: null                     # no pitching-moment limit
+
+optimizers:
+  cma: {popsize: 32}
+
+paths:
+  results: results/example
+  assets: results/example
