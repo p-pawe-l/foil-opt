@@ -8,11 +8,11 @@ import aerosandbox as asb
 import aerosandbox.numpy as np
 import casadi
 
-from ..config import GRADIENT, MODEL_SIZE, REYNOLDS, STALL_ALPHAS
-from ..constraints import without
+from .. import config
+from ..constraints import build_constraints
 from ..evaluator import Evaluator
 from ..geometry import to_airfoil
-from ..problem import CL_GRID, RE_GRID
+from ..problem import operating_points
 
 try:
     casadi.GlobalOptions.setNumpyMode(-1)  # silence casadi's numpy-compatibility notice
@@ -21,17 +21,20 @@ except AttributeError:
 
 
 def run_gradient(evaluate: Evaluator, x0: np.ndarray, seed: int) -> None:
+    p, s = config.settings.problem, config.settings.optimizers.gradient
+    cl, re = operating_points()
     opti = asb.Opti()
     x = opti.variable(init_guess=x0)
-    alpha = opti.variable(init_guess=CL_GRID / 0.1 - 2)
+    alpha = opti.variable(init_guess=cl / 0.1 - 2)
     af = to_airfoil(x)
 
-    aero = af.get_aero_from_neuralfoil(alpha=alpha, Re=RE_GRID, model_size=MODEL_SIZE)
-    aero["CL_stall"] = af.get_aero_from_neuralfoil(alpha=STALL_ALPHAS, Re=REYNOLDS.min(), model_size=MODEL_SIZE)["CL"]
-    opti.subject_to(aero["CL"] == CL_GRID)
+    aero = af.get_aero_from_neuralfoil(alpha=alpha, Re=re, model_size=p.model_size)
+    stall = af.get_aero_from_neuralfoil(alpha=p.stall_alphas, Re=p.reynolds.min(), model_size=p.model_size)
+    aero["CL_stall"] = stall["CL"]
+    opti.subject_to(aero["CL"] == cl)
 
-    margin = GRADIENT["margin"]  # IPOPT meets limits only to ~1e-3, so aim slightly inside them
-    for con in without("CL error"):
+    margin = s.margin  # IPOPT meets limits only to ~1e-3, so aim slightly inside them
+    for con in build_constraints(exclude=("cl_error",)):
         value = con.value(af, aero)
         if con.lower is not None:
             opti.subject_to(value >= con.lower + margin * con.scale)
@@ -39,5 +42,5 @@ def run_gradient(evaluate: Evaluator, x0: np.ndarray, seed: int) -> None:
             opti.subject_to(value <= con.upper - margin * con.scale)
 
     opti.minimize(np.mean(aero["CD"]))
-    sol = opti.solve(max_iter=GRADIENT["max_iter"], verbose=False, behavior_on_failure="return_last")
+    sol = opti.solve(max_iter=s.max_iter, verbose=False, behavior_on_failure="return_last")
     evaluate([sol(x)])

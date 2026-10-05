@@ -7,22 +7,23 @@ improving for a while, the search restarts around it with fresh step sizes.
 
 import numpy as np
 
-from ..config import SA_ES
+from .. import config
 from ..evaluator import Evaluator
 
 
 def run_self_adaptive_es(evaluate: Evaluator, x0: np.ndarray, seed: int) -> None:
-    mu, lam, n = SA_ES["mu"], SA_ES["lambda"], len(x0)
+    s = config.settings.optimizers.sa_es
+    mu, lam, n = s.parents, s.children, len(x0)
     tau_global, tau_local = 1 / np.sqrt(2 * n), 1 / np.sqrt(2 * np.sqrt(n))
     rng = np.random.default_rng(seed)
 
     center = x0
     while not evaluate.exhausted:
         parents = np.tile(center, (mu, 1))
-        sigmas = np.full((mu, n), SA_ES["sigma0"])
+        sigmas = np.full((mu, n), s.sigma0)
         best, stalled = np.inf, 0
 
-        while not evaluate.exhausted and stalled < SA_ES["stall_generations"]:
+        while not evaluate.exhausted and stalled < s.stall_generations:
             idx = rng.integers(mu, size=lam)
             child_sigmas = sigmas[idx] * np.exp(
                 tau_global * rng.standard_normal((lam, 1)) + tau_local * rng.standard_normal((lam, n))
